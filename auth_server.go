@@ -17,19 +17,19 @@ import (
 var port = flag.Int("port", 8080, "Port to listen on")
 var caPath = flag.String("ca_path", "/certs", "Path to certs")
 
-type Fingerprint struct {
-	Fingerprint_sha256 string `json:"fingerprint_sha256"`
+type fingerprint struct {
+	fingerprintSha256 string `json:"fingerprint_sha256"`
 }
 
-type AuthUsers struct {
-	Certificates []Fingerprint `json:"certificates"`
+type authUsers struct {
+	Certificates []fingerprint `json:"certificates"`
 }
 
-type CertServer struct {
-	au AuthUsers
+type certServer struct {
+	au authUsers
 }
 
-func (c *CertServer) loadAllCertFiles() error {
+func (c *certServer) loadAllCertFiles() error {
 	files, err := ioutil.ReadDir(*caPath)
 	if err != nil {
 		return err
@@ -46,7 +46,7 @@ func (c *CertServer) loadAllCertFiles() error {
 	return err
 }
 
-func (c *CertServer) loadCertFromFile(f string) error {
+func (c *certServer) loadCertFromFile(f string) error {
 	data, err := ioutil.ReadFile(f)
 	if err != nil {
 		return err
@@ -65,14 +65,14 @@ func (c *CertServer) loadCertFromFile(f string) error {
 			return err
 		}
 		fp256 := sha256.Sum256(cert.Raw)
-		fp := Fingerprint{Fingerprint_sha256: hex.EncodeToString(fp256[:])}
+		fp := fingerprint{fingerprintSha256: hex.EncodeToString(fp256[:])}
 		log.Printf("Read fingerprint: %v", fp)
 		c.au.Certificates = append(c.au.Certificates, fp)
 	}
 	return nil
 }
 
-func (c *CertServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (c *certServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	log.Print(req)
 	if len(c.au.Certificates) == 0 {
 		err := c.loadAllCertFiles()
@@ -85,6 +85,6 @@ func (c *CertServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func main() {
 	flag.Parse()
-	http.Handle("/v1/certs/list/approved", new(CertServer))
+	http.Handle("/v1/certs/list/approved", new(certServer))
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", *port), nil))
 }
